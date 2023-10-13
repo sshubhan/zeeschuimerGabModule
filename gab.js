@@ -4,19 +4,8 @@ zeeschuimer.register_module(
     function (response, source_platform_url, source_url) {
         let domain = source_platform_url.split("/")[2].toLowerCase().replace(/^www\./, '');
 
-        // Check the domain
-        if (
-            !["gab.com"].includes(domain)
-            // Hypothetical API endpoints based on the provided example; these would need to be confirmed
-            || (
-                source_url.indexOf('posts.json') < 0
-                && source_url.indexOf('HomeFeed') < 0
-                && source_url.indexOf('UserProfilePosts') < 0
-                && source_url.indexOf('Replies') < 0
-                && source_url.indexOf('SearchPosts') < 0
-                // Add other API endpoints as needed
-            )
-        ) {
+        // Check if the domain is Gab
+        if (!["gab.com"].includes(domain)) {
             return [];
         }
 
@@ -28,36 +17,40 @@ zeeschuimer.register_module(
             return [];
         }
 
-        // Hypothetical traversal function to parse Gab's post data; this would need to be adjusted
-        // to match Gab's actual API structure.
-        let traverse = function (obj) {
-            for (let property in obj) {
-                let child = obj[property];
-                if(!child) {
-                    continue;
+        // Check for the 'statuses' key, which contains the posts
+        if (data.hasOwnProperty('statuses')) {
+            for (let status of data['statuses']) {
+                let post = {};
+
+                post['id'] = status['id'];
+                post['created_at'] = status['created_at'];
+                post['content'] = status['content'];
+                post['language'] = status['language'];
+                post['visibility'] = status['visibility'];
+                post['url'] = status['url'];
+
+                // User data
+                post['user'] = {
+                    'id': status['account']['id'],
+                    'username': status['account']['username'],
+                    'avatar': status['account']['avatar'],
+                    'profile_url': status['account']['url']
+                };
+
+                // Embedded content
+                if (status.hasOwnProperty('card')) {
+                    post['embedded_content'] = {
+                        'url': status['card']['url'],
+                        'title': status['card']['title'],
+                        'description': status['card']['description'],
+                        'image': status['card']['image']
+                    };
                 }
-                // Check if the current object represents a post or similar structure
-                if(
-                    (
-                        (child.hasOwnProperty('type') && child['type'] === 'AddPosts')
-                        || (!child.hasOwnProperty('type') && Object.keys(child).length === 1)
-                    )
-                    && child.hasOwnProperty('posts')
-                ) {
-                    for (let post in child['posts']) {
-                        post = child['posts'][post];
-                        // Check for valid post data, similar to the tweet validation in the provided example
-                        if(post && post['id'] && post['content']) {
-                            posts.push(post);
-                        }
-                    }
-                } else if (typeof (child) === "object") {
-                    traverse(child);
-                }
+
+                posts.push(post);
             }
         }
 
-        traverse(data);
         return posts;
     }
 );
