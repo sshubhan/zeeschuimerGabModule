@@ -1,7 +1,7 @@
 zeeschuimer.register_module(
-    'Gab',
+    'GabSearch',
     'gab.com',
-    function (response, source_platform_url, source_url) {
+    function(response, source_platform_url, source_url) {
         let domain = source_platform_url.split("/")[2].toLowerCase().replace(/^www\./, '');
 
         // Check if the domain is Gab
@@ -17,40 +17,33 @@ zeeschuimer.register_module(
             return [];
         }
 
-        // Check for the 'statuses' key, which contains the posts
-        if (data.hasOwnProperty('statuses')) {
-            for (let status of data['statuses']) {
-                let post = {};
+        // Differentiate between regular and search results based on the URL
+        if (source_url.includes('search?type=status')) {
+            // Assuming the search results provide an array of posts
+            if (data && Array.isArray(data)) {
+                for (const item of data) {
+                    let post = {};
 
-                post['id'] = status['id'];
-                post['created_at'] = status['created_at'];
-                post['content'] = status['content'];
-                post['language'] = status['language'];
-                post['visibility'] = status['visibility'];
-                post['url'] = status['url'];
+                    post['id'] = item['id'];
+                    post['created_at'] = item['created_at'];
+                    post['content'] = item['content'];
+                    post['language'] = item['language'];
+                    post['visibility'] = item['visibility'];
+                    post['url'] = item['url'];
 
-                // User data
-                post['user'] = {
-                    'id': status['account']['id'],
-                    'username': status['account']['username'],
-                    'avatar': status['account']['avatar'],
-                    'profile_url': status['account']['url']
-                };
-
-                // Embedded content
-                if (status.hasOwnProperty('card')) {
-                    post['embedded_content'] = {
-                        'url': status['card']['url'],
-                        'title': status['card']['title'],
-                        'description': status['card']['description'],
-                        'image': status['card']['image']
+                    // User data
+                    post['user'] = {
+                        'id': item['account']['id'],
+                        'username': item['account']['username'],
+                        'display_name': item['account']['display_name'],
+                        'profile_url': item['account']['url'],
+                        'avatar': item['account']['avatar']
                     };
+
+                    posts.push(post);
                 }
-
-                posts.push(post);
             }
-        }
-
+        } 
         return posts;
     }
 );
